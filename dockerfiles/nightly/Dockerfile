@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:stretch-slim
 
 LABEL maintainer="Liu Chong <mail@clojure.cn>"
 
@@ -9,9 +9,10 @@ RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     ca-certificates curl file \
     build-essential \
-    autoconf automake autotools-dev libtool xutils-dev lsb-release nano\
+    autoconf automake autotools-dev libtool xutils-dev \
+    lsb-release nano sudo\
     #    linux-cloud-tools-generic-hwe-18.04-edge linux-tools-generic linux-tools-generic-hwe-18.04-edge && \
-    linux-tools-4.9 && \
+    linux-perf linux-base && \
     rm -rf /var/lib/apt/lists/*
 
 ENV SSL_VERSION=1.0.2s
@@ -25,15 +26,23 @@ ENV OPENSSL_LIB_DIR=/usr/local/ssl/lib \
     OPENSSL_INCLUDE_DIR=/usr/local/ssl/include \
     OPENSSL_STATIC=1
 
+# RUN ln -sfn `which perf_4.9` /usr/bin/perf
+RUN useradd --uid 5000 --create-home --shell /bin/bash dev
+
+RUN adduser dev sudo
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+ENV USER=dev
+WORKDIR /home/dev
+USER dev
+
 # install toolchain
 RUN curl https://sh.rustup.rs -sSf | \
     sh -s -- --default-toolchain nightly -y
 
-ENV PATH=/root/.cargo/bin:$PATH
+ENV PATH=/home/dev/.cargo/bin:$PATH
 
-RUN cargo install flamegraph && ln -sfn `which perf_4.9` /usr/bin/perf
-
-ENV USER=root
+RUN cargo install flamegraph
 
 #mkdir Projects && cd Projects && cargo new testapp && cd testapp && cargo build && cargo flamegraph
 
@@ -44,3 +53,4 @@ ENV USER=root
 # https://www.reddit.com/r/rust/comments/a1drss/how_to_debug_cargo_build_preject/
 # http://www.brendangregg.com/perf.html
 # https://gendignoux.com/blog/2019/11/09/profiling-rust-docker-perf.html
+# https://blog.anp.lol/rust/2016/07/24/profiling-rust-perf-flamegraph/
